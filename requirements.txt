@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://download.pytorch.org/whl/cu130
 
 # --- Core Frameworks & GenAI ---
 langchain==1.2.15
@@ -12,7 +12,7 @@ google-genai==1.70.0
 langchain-chroma==1.1.0
 chromadb==1.5.5
 sentence-transformers==5.3.0
-torch>=2.0.0
+torch>=2.2.0
 
 # --- Document Processing & Chunking ---
 langchain-text-splitters==1.1.1
