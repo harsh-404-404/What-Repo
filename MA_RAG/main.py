@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from pathlib import Path
 import os
+from config import MAX_FILES_TO_CREATE_VECTOR_DB
 
 load_dotenv()
 
@@ -29,8 +30,8 @@ def main():
         raise
 
     # 2. Build Database and App
-    print("Analyzing Codebase and Building Agent Workflow...")
-    if count_valid_suppoted_files(temp_git_repo_storage) > 6000:
+    print("PreParing...")
+    if count_valid_suppoted_files(temp_git_repo_storage) > MAX_FILES_TO_CREATE_VECTOR_DB:
         app = build_workflow(temp_git_repo_storage, False)
     else:
         doc = load_repository_as_documents(temp_git_repo_storage)

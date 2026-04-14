@@ -362,3 +362,6 @@ SUPERVISOR_SYSTEM_PROMPT = """
     1. SUCCESS: Set status="ACCEPT". Write an exhaustive, highly detailed response addressed to the user.
     2. REWORK: Set status="REJECT". Write strict, non-repetitive, targeted feedback addressed to the Junior Researcher. DO NOT address the user.
 """
+
+
+MAX_FILES_TO_CREATE_VECTOR_DB = 6000
