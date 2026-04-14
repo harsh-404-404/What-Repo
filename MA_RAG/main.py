@@ -14,6 +14,7 @@ load_dotenv()
 
 def main():
     repo_url = "https://github.com/openai/codex"
+    
     current_dir = Path(os.getcwd())
     temp_git_repo_storage = current_dir / "temp_git_repo_storage"
 
