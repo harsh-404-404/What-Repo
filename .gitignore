@@ -4,8 +4,8 @@
 
 # Secrets and API Keys
 .env
-/generated_chroma_database/
-/temp_git_repo_storage/
+**/generated_chroma_database/
+**/temp_git_repo_storage/
 
 # Virtual Environment
 /venv/

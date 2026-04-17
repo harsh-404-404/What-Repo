@@ -1,0 +1,111 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WHATREPO</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+
+    <!-- ═══════════════ HEADER (constant) ═══════════════ -->
+    <header id="header">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="12" height="12" rx="2" fill="var(--accent)"/>
+          <rect x="18" y="2" width="12" height="12" rx="2" fill="var(--accent)" opacity="0.5"/>
+          <rect x="2" y="18" width="12" height="12" rx="2" fill="var(--accent)" opacity="0.5"/>
+          <rect x="18" y="18" width="12" height="12" rx="2" fill="var(--accent)"/>
+        </svg>
+        <span class="logo-text">WR</span>
+      </div>
+
+      <div class="header-title">WHAT REPO</div>
+
+      <div class="header-right">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">idle</span>
+      </div>
+    </header>
+
+    <!-- ═══════════════ WARNING BANNER (chat page) ═══════════════ -->
+    <div id="warningBanner" class="warning-banner hidden">
+      <span class="warn-icon">⚠</span>
+      <span>Repo Too Big to Understand Fully — Capabilities &amp; Accuracy May Be Limited</span>
+      <button id="dismissWarning">✕</button>
+    </div>
+
+    <!-- ═══════════════ MAIN ═══════════════ -->
+    <main id="mainSection">
+
+      <!-- ── PAGE 1: Landing ── -->
+      <section id="landingPage" class="page active">
+        <div class="landing-inner">
+          <h1 class="hero-title">Analyse Any Repository…</h1>
+          <p class="hero-sub">Understand any GitHub repository instantly.</p>
+          <div class="input-wrap">
+            <span class="input-icon">⎔</span>
+            <input
+              type="text"
+              id="repoInput"
+              placeholder="https://github.com/owner/repository"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <button id="analyseBtn" class="analyse-btn">
+            <span class="btn-text">Analyse Repo</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+        <div class="grid-bg"></div>
+      </section>
+
+      <!-- ── PAGE 2: Processing ── -->
+      <section id="processingPage" class="page">
+        <div class="processing-inner">
+          <div class="spinner-wrap">
+            <div class="main-spinner"></div>
+            <span class="processing-label">Analysing Repository…</span>
+          </div>
+
+          <div id="stepsContainer" class="steps-container"><!--processing nodes will be added here--></div>
+        </div>
+      </section>
+
+      <!-- ── PAGE 3: Chat ── -->
+      <section id="chatPage" class="page">
+        <div class="chat-inner">
+          <div id="chatMessages" class="chat-messages">
+            <div class="chat-welcome">
+              <p class="welcome-line">So, Where Do You Want To Start?</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer id="footer" class="hidden">
+      <div class="chat-input-wrap">
+        <input
+          type="text"
+          id="chatInput"
+          placeholder="ask me anything about the repo…"
+          autocomplete="on"
+          spellcheck="false"
+        />
+        <button id="sendBtn" class="send-btn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M2 10L18 2L10 18L8.5 11.5L2 10Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+  </html>

@@ -8,6 +8,7 @@ import uuid  # to generate ids
 from config import CHROMA_PERSIST_DIR,CHROMA_COLLECTION_NAME
 import os
 import shutil
+from core.downloader import delete_dir
 
 #This is fix for issue with model SFR-Embedding-Code-400M_R while working with latest RTX5050 
 def _inject_position_ids_hook(module, args, kwargs):
@@ -86,7 +87,7 @@ def build_vector_db(documents: List[Document]) -> Chroma:
     # 1. Cleanup previous database
     if os.path.exists(CHROMA_PERSIST_DIR):
         print("Cleaning up old vector database...")
-        shutil.rmtree(CHROMA_PERSIST_DIR)
+        delete_dir(CHROMA_PERSIST_DIR)
 
     # 2. Initialize new database
     local_embedding_fn = _SFRCodeEmbeddings()

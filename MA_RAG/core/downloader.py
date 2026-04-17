@@ -8,14 +8,6 @@ import os
 import shutil # to remove folder
 from pathlib import Path
 
-
-def del_rw(action, name, exc):
-    os.chmod(name, stat.S_IWRITE)
-    os.remove(name)
-    
-def delete_dir(path):
-    shutil.rmtree(path, onerror=del_rw)
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -31,8 +23,9 @@ def _force_remove(action, name, exc):
         logger.warning(f"Could not remove '{name}': {e}")
 
 
-def delete_dir(path: Path) -> None:
+def delete_dir(path_) -> None:
     """Recursively delete a directory, handling read-only files."""
+    path = Path(path_)
     if path.exists():
         shutil.rmtree(path, onerror=_force_remove)
         logger.info(f"Deleted existing directory: {path}")
