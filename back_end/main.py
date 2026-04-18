@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 # Import your existing backend logic
 from core.downloader import download_github_repo, delete_dir
-from core.loader import count_valid_suppoted_files, load_repository_as_documents
+from core.loader import count_valid_supported_files, load_repository_as_documents
 from core.splitter import custom_splitter
 from core.embeddings import build_vector_db
 from agent.graph import build_workflow
@@ -86,7 +86,7 @@ async def initialize_repository(request: RepoRequest):
         yield format_msg("START", "Counting supported files...")
         await asyncio.sleep(0.01)
         
-        file_count = await asyncio.to_thread(count_valid_suppoted_files, temp_git_repo_storage)
+        file_count = await asyncio.to_thread(count_valid_supported_files, temp_git_repo_storage)
         
         if file_count > MAX_FILES_TO_CREATE_VECTOR_DB:
             yield format_msg("WARNING", f"Repo is large ({file_count} files). Building workflow without Vector DB...")

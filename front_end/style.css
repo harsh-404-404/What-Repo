@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════
-   WHATREPO — style.css  v2
+   WHATREPO — style.css  v3
    ══════════════════════════════════════════════ */
 
 /* ── Variables ── */
@@ -484,96 +484,120 @@ input, textarea {
   transition: opacity 0.3s;
 }
 
-/* Steps */
+/* ── Steps container ── */
 .steps-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+/* ── Step box ── */
 .step-box {
+  display: flex;
+  align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 18px;
   opacity: 0;
-  transform: translateY(10px);
-  animation: stepIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transition: height 0.4s cubic-bezier(0.4,0,0.2,1),
-              padding 0.4s cubic-bezier(0.4,0,0.2,1),
-              background 0.4s ease,
-              border-color 0.4s ease;
+  transform: translateY(8px);
+  animation: stepIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  /* Only transition the properties we animate manually via JS */
+  transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-top 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-bottom 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s ease,
+              border-color 0.3s ease;
   overflow: hidden;
 }
 
-.step-box.collapsed {
-  height: 46px !important;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.step-box.collapsed .step-title { height: 46px; align-items: center; margin-bottom: 0; }
-.step-box.collapsed .sub-items  { opacity: 0; pointer-events: none; }
-
 .step-box.done-green {
-  background: rgba(52, 211, 153, 0.05);
-  border-color: rgba(52, 211, 153, 0.2);
+  background: rgba(52, 211, 153, 0.04);
+  border-color: rgba(52, 211, 153, 0.18);
 }
 
 .step-box.warn-yellow {
   background: var(--warn-bg);
-  border-color: rgba(245, 158, 11, 0.25);
+  border-color: rgba(245, 158, 11, 0.22);
 }
 
 .step-box.err-red {
-  background: rgba(248, 113, 113, 0.06);
-  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.05);
+  border-color: rgba(248, 113, 113, 0.22);
 }
 
-.step-collapsed-badge {
-  font-size: 0.68rem;
-  letter-spacing: 0.05em;
-  margin-left: 6px;
-  opacity: 0;
-  transition: opacity 0.3s ease 0.3s;
-}
-
-.step-box.collapsed .step-collapsed-badge { opacity: 1; }
-.step-box.done-green  .step-collapsed-badge { color: var(--green); }
-.step-box.warn-yellow .step-collapsed-badge { color: var(--warn); }
-.step-box.err-red     .step-collapsed-badge { color: var(--red); }
-
-@keyframes stepIn {
-  to { opacity: 1; transform: translateY(0); }
-}
-
+/* ── Step title row ── */
 .step-title {
   font-family: var(--font-head);
   font-weight: 600;
   font-size: 0.82rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  height: 22px; /* fixed so collapsed height = padding*2 + 22 = ~46 */
+  /* margin-bottom: 10px; */
 }
 
-.step-icon {
-  font-size: 0.85rem;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.step-icon.spin-icon { animation: spinRing 0.9s linear infinite; color: var(--accent2); display: inline-block; }
-.step-icon.green { color: var(--green); }
-.step-icon.warn  { color: var(--warn); }
-.step-icon.err   { color: var(--red); }
-
-.sub-items {
+.step-box .sub-items {
   display: flex;
   flex-direction: column;
   gap: 6px;
   transition: opacity 0.2s;
+}
+
+/* ── Step icon wrapper ── */
+.step-icon-wrap {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* CSS ring spinner — replaces the old character spinner */
+.step-ring-spinner {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spinRing 0.7s linear infinite;
+}
+
+/* Status icon that replaces spinner when done */
+.step-status-icon {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  display: block;
+}
+.step-status-icon.green { color: var(--green); }
+.step-status-icon.warn  { color: var(--warn); }
+.step-status-icon.err   { color: var(--red); }
+
+/* Collapsed badge (Done / Warning / Error label) */
+.step-collapsed-badge {
+  font-size: 0.67rem;
+  letter-spacing: 0.04em;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.25s ease 0.25s;
+  font-family: var(--font-mono);
+}
+
+/* Badge becomes visible only when height has settled */
+.step-box.done-green  .step-collapsed-badge { color: var(--green); }
+.step-box.warn-yellow .step-collapsed-badge { color: var(--warn);  }
+.step-box.err-red     .step-collapsed-badge { color: var(--red);   }
+
+/* We reveal badge via JS after transition ends, not via .collapsed class */
+.step-collapsed-badge.visible { opacity: 1; }
+
+@keyframes stepIn {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .sub-item {
@@ -594,6 +618,94 @@ input, textarea {
 }
 
 .sub-item.done .sub-dot { background: var(--green); }
+
+/* ── Processing action card (error / warning gate) ── */
+.proc-action-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: stepIn 0.35s 0.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  margin-top: 4px;
+}
+
+.proc-action-card.proc-action-error {
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.proc-action-card.proc-action-warning {
+  background: var(--warn-bg);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.proc-action-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.proc-action-card.proc-action-error   .proc-action-icon { color: var(--red);  }
+.proc-action-card.proc-action-warning .proc-action-icon { color: var(--warn); }
+
+.proc-action-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proc-action-title {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+}
+
+.proc-action-card.proc-action-error   .proc-action-title { color: var(--red);  }
+.proc-action-card.proc-action-warning .proc-action-title { color: var(--warn); }
+
+.proc-action-desc {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+.proc-action-btn {
+  margin-top: 10px;
+  align-self: flex-start;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.proc-action-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.proc-action-btn:active { transform: translateY(0); }
+
+.proc-btn-error {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.proc-btn-error:hover { box-shadow: 0 4px 16px rgba(248, 113, 113, 0.15); }
+
+.proc-btn-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warn);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.proc-btn-warning:hover { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.12); }
 
 /* ══════════════ PAGE 3: CHAT ══════════════ */
 #chatPage {
@@ -679,7 +791,7 @@ input, textarea {
   transform: translateY(-1px);
 }
 
-/* Message groups */
+/* ── Message groups ── */
 .msg-group {
   display: flex;
   flex-direction: column;
@@ -703,51 +815,186 @@ input, textarea {
   padding: 0 4px;
 }
 
-.msg-bubble {
-  /* max-width: min(680px, 88%); */
-  padding: 13px 18px;
+/* ── User bubble: stays boxed ── */
+.msg-bubble.user {
+  max-width: min(520px, 88%);
+  padding: 11px 16px;
   border-radius: var(--radius);
+  border-bottom-right-radius: 3px;
   font-size: 0.87rem;
   line-height: 1.7;
-  -webkit-user-select: text;
-  user-select: text;
-  cursor: text;
-  word-break: break-word;
-}
-
-.msg-bubble.user {
   background: var(--accent-soft);
   border: 1px solid rgba(59, 130, 246, 0.2);
   color: var(--text);
-  border-bottom-right-radius: 3px;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
 }
 
+/* ── Bot bubble: transparent, no border ── */
 .msg-bubble.bot {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   color: var(--text);
-  border-bottom-left-radius: 3px;
+  font-size: 0.87rem;
+  line-height: 1.75;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+  padding: 2px 0;
+  width: 100%;
 }
 
-/* Code & pre inside bot bubbles */
-.msg-bubble.bot pre,
-.msg-bubble.bot code {
+/* ── Markdown elements inside bot bubble ── */
+.msg-bubble.bot p {
+  margin-bottom: 0.75em;
+}
+.msg-bubble.bot p:last-child {
+  margin-bottom: 0;
+}
+
+.msg-bubble.bot h1,
+.msg-bubble.bot h2,
+.msg-bubble.bot h3,
+.msg-bubble.bot h4 {
+  font-family: var(--font-head);
+  font-weight: 700;
+  color: var(--text);
+  margin: 1.1em 0 0.45em;
+  letter-spacing: 0.02em;
+}
+.msg-bubble.bot h1 { font-size: 1.2rem; }
+.msg-bubble.bot h2 { font-size: 1.05rem; }
+.msg-bubble.bot h3 { font-size: 0.95rem; }
+
+.msg-bubble.bot ul,
+.msg-bubble.bot ol {
+  padding-left: 1.4em;
+  margin-bottom: 0.75em;
+}
+.msg-bubble.bot li { margin-bottom: 0.25em; }
+
+.msg-bubble.bot strong { color: var(--text); font-weight: 700; }
+.msg-bubble.bot em     { color: var(--text-dim); }
+
+.msg-bubble.bot a {
+  color: var(--accent2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.msg-bubble.bot blockquote {
+  border-left: 3px solid var(--border2);
+  padding-left: 12px;
+  color: var(--text-dim);
+  margin: 0.75em 0;
+  font-style: italic;
+}
+
+/* Inline code */
+.msg-bubble.bot :not(pre) > code {
   font-family: var(--font-mono);
   background: var(--surface3);
   border: 1px solid var(--border2);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.8em;
+  color: var(--accent2);
+  word-break: break-all;
 }
 
-.msg-bubble.bot code {
-  padding: 2px 6px;
+/* ── Code block wrapper ── */
+.code-block-wrap {
+  margin: 10px 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--surface3);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-lang-label {
+  font-size: 0.67rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.code-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 0.67rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.code-copy-btn:hover {
+  color: var(--text-dim);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .msg-bubble.bot pre {
+  margin: 0;
   padding: 14px 16px;
   overflow-x: auto;
-  margin: 10px 0;
   line-height: 1.6;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.msg-bubble.bot pre code {
+  font-family: var(--font-mono);
+  font-size: 0.79rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  word-break: normal;
+}
+
+/* ── Copy response button ── */
+.msg-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: color 0.2s, border-color 0.2s;
+  margin-top: 2px;
+  align-self: flex-start;
+}
+
+.msg-copy-btn:hover {
+  color: var(--text-dim);
+  border-color: var(--border2);
 }
 
 .msg-meta {
@@ -757,48 +1004,40 @@ input, textarea {
   letter-spacing: 0.04em;
 }
 
-/* ── Thinking / Tool-use section ── */
+/* ══════════════ THINKING / TOOL-USE SECTION ══════════════ */
 .thinking-wrap {
   display: flex;
   flex-direction: column;
   gap: 0;
   align-self: flex-start;
-  width: 100%;
-  /* max-width: min(680px, 88%); */
+  /* Indent + left accent bar to distinguish from main response */
+  padding-left: 14px;
+  border-left: 2px solid var(--border2);
+  margin-left: 2px;
+  width: calc(100% - 16px);
   animation: msgIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .thinking-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 0.73rem;
-  color: var(--text-dim);
+  gap: 7px;
+  padding: 5px 0;
+  background: transparent;
+  border: none;
+  font-size: 0.7rem;
+  color: var(--muted);
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  transition: color 0.2s;
   user-select: none;
   letter-spacing: 0.04em;
   width: 100%;
   text-align: left;
 }
 
-.thinking-toggle:hover {
-  border-color: var(--border2);
-  color: var(--text);
-  background: var(--surface2);
-}
+.thinking-toggle:hover { color: var(--text-dim); }
 
-.thinking-toggle.active {
-  border-color: var(--accent);
-  color: var(--accent2);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-bottom-color: transparent;
-}
+.thinking-toggle.active { color: var(--accent2); }
 
 .thinking-spinner {
   width: 12px;
@@ -815,19 +1054,15 @@ input, textarea {
 
 .thinking-chevron {
   margin-left: auto;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   transition: transform 0.25s ease;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .thinking-toggle.open .thinking-chevron { transform: rotate(180deg); }
 
+/* Panel */
 .thinking-steps-panel {
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-top: none;
-  border-bottom-left-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
   overflow: hidden;
   max-height: 0;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
@@ -840,43 +1075,50 @@ input, textarea {
 }
 
 .thinking-steps-inner {
-  padding: 12px 16px;
+  padding: 8px 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   overflow-y: auto;
   max-height: 380px;
 }
 
+/* Individual thinking step */
 .thinking-step {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  font-size: 0.74rem;
-  color: var(--muted);
-  line-height: 1.5;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #ffffff;
+  line-height: 1.55;
+  opacity: 0.75;
 }
 
 .thinking-step-dot {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--muted);
   flex-shrink: 0;
-  margin-top: 5px;
+  margin-top: 6px;
+}
+
+.thinking-step-text {
+  flex: 1;
 }
 
 .thinking-step.current {
   color: var(--text-dim);
+  opacity: 1;
 }
 
 .thinking-step.current .thinking-step-dot {
   background: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
 }
 
 .thinking-step.done-step {
-  color: var(--text-dim);
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 .thinking-step.done-step .thinking-step-dot {
@@ -950,7 +1192,7 @@ input, textarea {
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  margin-bottom: 1px;
+  margin: 5px 0px;
 }
 
 .send-btn:hover {

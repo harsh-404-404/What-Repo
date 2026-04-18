@@ -23,6 +23,15 @@ const els = {
 
 let IS_BIG_REPO   = false;
 let activeStepBox = null;
+let hadError      = false;
+let hadWarning    = false;
+
+// ─────────────────────────────────────────────
+// MARKED.JS SETUP
+// ─────────────────────────────────────────────
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
 
 // ─────────────────────────────────────────────
 // UTILITIES
@@ -56,24 +65,38 @@ els.chatInput.addEventListener('input', () => {
 // ─────────────────────────────────────────────
 // COLLAPSE A COMPLETED STEP BOX
 // ─────────────────────────────────────────────
-function collapseBox(box, isWarn) {
+function collapseBox(box, status) {
   return new Promise((resolve) => {
-    box.style.height = box.offsetHeight + 'px';
+    // Lock height at current value so we can animate down
+    const currentH = box.offsetHeight;
+    box.style.height = currentH + 'px';
+    box.style.overflow = 'hidden';
 
+    // Badge text
     const badge = document.createElement('span');
     badge.className = 'step-collapsed-badge';
-    badge.textContent = isWarn ? '· Warning' : '· Done';
+    badge.textContent = status === 'ERROR' ? '· Error' : status === 'WARNING' ? '· Warning' : '· Done';
     box.querySelector('.step-title').appendChild(badge);
 
+    // Hide sub-items right away so they don't flash during resize
+    const subItems = box.querySelector('.sub-items');
+    if (subItems) subItems.style.opacity = '0';
+
+    // Animate to collapsed height next frame
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        box.classList.add('collapsed');
+        box.style.height = '46px';
+        box.style.paddingTop = '0';
+        box.style.paddingBottom = '0';
       });
     });
 
     box.addEventListener('transitionend', function handler(e) {
       if (e.propertyName !== 'height') return;
       box.removeEventListener('transitionend', handler);
+      // Reveal the badge now that height is settled
+      const b = box.querySelector('.step-collapsed-badge');
+      if (b) b.classList.add('visible');
       resolve();
     });
   });
@@ -103,7 +126,9 @@ function startAnalysis() {
   showPage(els.processingPage);
   els.stepsContainer.innerHTML = '';
   activeStepBox = null;
-  IS_BIG_REPO = false;
+  IS_BIG_REPO   = false;
+  hadError      = false;
+  hadWarning    = false;
 
   connectToBackend(repoUrl);
 }
@@ -155,9 +180,7 @@ async function connectToBackend(repoUrl) {
       await finishActiveBox(errorBox, 'ERROR');
     }
 
-    await delay(1800);
-    showPage(els.landingPage);
-    setStatus('', 'idle');
+    showProcessingAction('error');
   }
 }
 
@@ -166,9 +189,16 @@ async function processBackendEvent(data) {
 
   if (status === 'FINISHED') {
     if (activeStepBox) await finishActiveBox(activeStepBox, 'SUCCESS');
-    await delay(700);
-    setStatus('chat', 'ready');
-    transitionToChat();
+
+    if (hadError) {
+      showProcessingAction('error');
+    } else if (hadWarning) {
+      showProcessingAction('warning');
+    } else {
+      await delay(700);
+      setStatus('chat', 'ready');
+      transitionToChat();
+    }
     return;
   }
 
@@ -181,6 +211,9 @@ async function processBackendEvent(data) {
   if (status === 'WARNING' && task && task.includes('Repo is large')) {
     IS_BIG_REPO = true;
   }
+
+  if (status === 'WARNING') hadWarning = true;
+  if (status === 'ERROR')   hadError   = true;
 
   if (status === 'SUCCESS' || status === 'WARNING' || status === 'ERROR') {
     if (activeStepBox) {
@@ -195,13 +228,63 @@ async function processBackendEvent(data) {
   }
 }
 
+// ─────────────────────────────────────────────
+// PROCESSING ACTION BUTTON (error / warning gate)
+// ─────────────────────────────────────────────
+function showProcessingAction(type) {
+  // Remove any existing action card
+  const existing = els.stepsContainer.querySelector('.proc-action-card');
+  if (existing) existing.remove();
+
+  const card = document.createElement('div');
+  card.className = `proc-action-card ${type === 'error' ? 'proc-action-error' : 'proc-action-warning'}`;
+
+  if (type === 'error') {
+    card.innerHTML = `
+      <div class="proc-action-icon">✕</div>
+      <div class="proc-action-body">
+        <p class="proc-action-title">Analysis failed</p>
+        <p class="proc-action-desc">An error occurred while analysing this repository. Please check the URL and try again.</p>
+        <button class="proc-action-btn proc-btn-error" id="procBackBtn">← Try a Different Repo</button>
+      </div>`;
+  } else {
+    card.innerHTML = `
+      <div class="proc-action-icon">⚠</div>
+      <div class="proc-action-body">
+        <p class="proc-action-title">Analysis complete with warnings</p>
+        <p class="proc-action-desc">Some steps raised warnings. Results may be partial, but you can still explore the repository.</p>
+        <button class="proc-action-btn proc-btn-warning" id="procContinueBtn">Continue to Chat →</button>
+      </div>`;
+  }
+
+  els.stepsContainer.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  if (type === 'error') {
+    document.getElementById('procBackBtn').addEventListener('click', () => {
+      showPage(els.landingPage);
+      setStatus('', 'idle');
+    });
+  } else {
+    document.getElementById('procContinueBtn').addEventListener('click', () => {
+      setStatus('chat', 'ready');
+      transitionToChat();
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// STEP BOX HELPERS
+// ─────────────────────────────────────────────
 function createNewStepBox(message) {
   const box = document.createElement('div');
   box.className = 'step-box';
 
   box.innerHTML = `
     <div class="step-title">
-      <span class="step-icon spin-icon">◌</span>
+      <span class="step-icon-wrap">
+        <span class="step-ring-spinner"></span>
+      </span>
       <span class="title-text">${escapeHtml(message)}</span>
     </div>
     <div class="sub-items"></div>`;
@@ -212,27 +295,41 @@ function createNewStepBox(message) {
 }
 
 async function finishActiveBox(box, status) {
-  const iconEl = box.querySelector('.step-icon');
-  iconEl.classList.remove('spin-icon');
+  // Swap spinner for status icon
+  const iconWrap = box.querySelector('.step-icon-wrap');
+  if (iconWrap) {
+    const spinner = iconWrap.querySelector('.step-ring-spinner');
+    if (spinner) spinner.remove();
 
-  const isWarn = status === 'WARNING' || status === 'ERROR';
+    const icon = document.createElement('span');
+    icon.className = 'step-status-icon';
 
-  if (status === 'WARNING') {
-    box.classList.add('warn-yellow');
-    iconEl.textContent = '⚠';
-    iconEl.classList.add('warn');
-  } else if (status === 'ERROR') {
-    box.classList.add('err-red');
-    iconEl.textContent = '✕';
-    iconEl.classList.add('err');
-  } else {
-    box.classList.add('done-green');
-    iconEl.textContent = '✓';
-    iconEl.classList.add('green');
+    if (status === 'WARNING') {
+      icon.textContent = '⚠';
+      icon.classList.add('warn');
+    } else if (status === 'ERROR') {
+      icon.textContent = '✕';
+      icon.classList.add('err');
+    } else {
+      icon.textContent = '✓';
+      icon.classList.add('green');
+    }
+
+    iconWrap.appendChild(icon);
   }
 
-  await delay(280);
-  await collapseBox(box, isWarn);
+  // Apply status colour class
+  if (status === 'WARNING') {
+    box.classList.add('warn-yellow');
+  } else if (status === 'ERROR') {
+    box.classList.add('err-red');
+  } else {
+    box.classList.add('done-green');
+  }
+
+  // Brief pause so the colour is visible, then animate collapsed
+  await delay(320);
+  await collapseBox(box, status);
 }
 
 // ─────────────────────────────────────────────
@@ -252,7 +349,7 @@ els.dismissWarning.addEventListener('click', () => {
 });
 
 // ─────────────────────────────────────────────
-// WELCOME STATE
+// WELCOME TO CHAT STATE
 // ─────────────────────────────────────────────
 function renderWelcome() {
   els.chatMessages.innerHTML = '';
@@ -317,6 +414,7 @@ async function sendMessage() {
   let lastStepEl    = null;
   let stepCount     = 0;
   let finalBubble   = null;
+  let fullMarkdown  = '';
 
   try {
     const response = await fetch('http://localhost:8000/chat', {
@@ -369,11 +467,14 @@ async function sendMessage() {
                 closeThinkingPanel(thinkingWrap);
               }
 
+              // Accumulate markdown text
+              fullMarkdown += data.text;
+
               // Create or update the answer bubble
               if (!finalBubble) {
                 finalBubble = createBotBubble(botGroup);
               }
-              finalBubble.innerHTML = data.text;
+              renderMarkdownToBubble(finalBubble, fullMarkdown);
               finalBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
@@ -384,6 +485,13 @@ async function sendMessage() {
       }
 
       if (done) break;
+      console.log("End has come!!")
+    }
+
+    // Add copy-response button after streaming is done
+    if (finalBubble && fullMarkdown) {
+      const copyBtn = buildCopyResponseBtn(fullMarkdown, finalBubble);
+      botGroup.appendChild(copyBtn);
     }
 
     // Add timestamp after response is complete
@@ -396,6 +504,74 @@ async function sendMessage() {
     const errBubble = createBotBubble(botGroup);
     errBubble.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(error.message)}</span>`;
   }
+}
+
+// ─────────────────────────────────────────────
+// MARKDOWN RENDERING
+// ─────────────────────────────────────────────
+function renderMarkdownToBubble(bubble, mdText) {
+  if (typeof marked === 'undefined') {
+    // Fallback: plain text with line breaks
+    bubble.textContent = mdText;
+    return;
+  }
+
+  const html = marked.parse(mdText);
+  bubble.innerHTML = html;
+
+  // Post-process: wrap <pre> blocks with header + copy button
+  bubble.querySelectorAll('pre').forEach((pre) => {
+    if (pre.parentElement && pre.parentElement.classList.contains('code-block-wrap')) return; // already wrapped
+
+    const codeEl = pre.querySelector('code');
+    const rawLang = codeEl ? codeEl.className.replace(/^language-/, '').trim() : '';
+    const lang = rawLang || 'code';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'code-block-wrap';
+
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+
+    const langLabel = document.createElement('span');
+    langLabel.className = 'code-lang-label';
+    langLabel.textContent = lang;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'code-copy-btn';
+    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Copy</span>`;
+
+    copyBtn.addEventListener('click', () => {
+      const content = codeEl ? codeEl.textContent : pre.textContent;
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.querySelector('span').textContent = 'Copied!';
+        setTimeout(() => { copyBtn.querySelector('span').textContent = 'Copy'; }, 1800);
+      }).catch(() => {});
+    });
+
+    header.appendChild(langLabel);
+    header.appendChild(copyBtn);
+
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(header);
+    wrap.appendChild(pre);
+  });
+}
+
+function buildCopyResponseBtn(markdownText, bubble) {
+  const btn = document.createElement('button');
+  btn.className = 'msg-copy-btn';
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  btn.addEventListener('click', () => {
+    // Copy plain text from the rendered bubble
+    navigator.clipboard.writeText(bubble.innerText).then(() => {
+      btn.querySelector('span').textContent = 'Copied!';
+      setTimeout(() => { btn.querySelector('span').textContent = 'Copy response'; }, 1800);
+    }).catch(() => {});
+  });
+
+  return btn;
 }
 
 // ─────────────────────────────────────────────
@@ -471,7 +647,10 @@ function addThinkingStep(inner, text, previousStepEl) {
 
   const step = document.createElement('div');
   step.className = 'thinking-step current';
-  step.innerHTML = `<span class="thinking-step-dot"></span><span>${escapeHtml(text)}</span>`;
+
+  // Preserve newlines from backend
+  const formatted = escapeHtml(text).replace(/\n/g, '<br>');
+  step.innerHTML = `<span class="thinking-step-dot"></span><span class="thinking-step-text">${formatted}</span>`;
   inner.appendChild(step);
 
   // Scroll the panel

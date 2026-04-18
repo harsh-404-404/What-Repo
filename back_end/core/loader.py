@@ -2,6 +2,8 @@ from config import AUTO_GEN_SCAN_EXTENSIONS,AUTO_GENERATED_MARKERS,SUPPORTED_TYP
 from pathlib import Path
 import pathspec
 import json
+import os
+import pathspec
 
 from langchain_core.documents import Document
 from langchain_core.document_loaders.base import BaseLoader
@@ -63,21 +65,66 @@ def is_valid(file_path):
             return True
     except Exception:
         return False
-    
 
-def count_valid_suppoted_files(directory_path : Path) -> int:
-    #Compile the exclusion patterns (gitwildmatch handles **/ perfectly)
+
+def count_valid_supported_files(directory_path: Path) -> int:
+    import os
+    import pathspec
+    from concurrent.futures import ThreadPoolExecutor
+
     spec = pathspec.PathSpec.from_lines('gitwildmatch', EXCLUDE_PATTERNS)
+    root = str(directory_path)
 
-    # Count files using a generator expression
-    total_valid_files = sum(
-        1 for item in directory_path.rglob('*') 
-        if item.is_file() 
-        and not spec.match_file(str(item.relative_to(directory_path))) # Check against EXCLUDE_PATTERNS
-        and is_valid(item)                                       # Check against your custom logic
-    )
+    # 1. FAST TRAVERSAL: Gather all file paths first
+    candidates = []
+    stack = [root]
+    
+    # We define this locally since we can't edit globals. 
+    # Checking a set is O(1) and bypasses slow pathspec regex for massive junk folders.
+    fast_ignore_dirs = {
+        ".git", ".svn", ".hg", "node_modules", "venv", ".venv", "env", "python_env",
+        "__pycache__", "dist", "build", "out", "target", "bin", "obj", ".next", 
+        ".nuxt", ".vscode", ".idea", "coverage", "tmp", "temp"
+    }
 
-    return total_valid_files
+    while stack:
+        current_dir = stack.pop()
+
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    # Instantly skip giant junk directories before running slow regex
+                    if entry.is_dir(follow_symlinks=False) and entry.name in fast_ignore_dirs:
+                        continue
+                        
+                    rel_path = os.path.relpath(entry.path, root)
+
+                    if spec.match_file(rel_path):
+                        continue
+
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append(entry.path)
+                    elif entry.is_file(follow_symlinks=False):
+                        # Do NOT validate here. Just collect the path.
+                        candidates.append(entry.path)
+                        
+        except PermissionError:
+            continue
+
+    # At this line, len(candidates) gives you the instant total of 34,645 files!
+    
+    # 2. MULTITHREADED VALIDATION: Run `is_valid` in parallel
+    valid_count = 0
+    
+    # Using 32 workers is generally a sweet spot for I/O bound disk operations
+    with ThreadPoolExecutor(max_workers=32) as executor:
+        # executor.map feeds our candidates list into your existing `is_valid` function
+        results = executor.map(is_valid, candidates)
+        
+        # Count how many returned True
+        valid_count = sum(1 for is_file_valid in results if is_file_valid)
+
+    return valid_count
 
 
 
