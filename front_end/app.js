@@ -1,64 +1,76 @@
-// TODO - when error loading page shold have red box instade of Yellow
-
 // ─────────────────────────────────────────────
 // DOM REFS
 // ─────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
 const els = {
-  repoInput:       $('repoInput'),
-  analyseBtn:      $('analyseBtn'),
-  landingPage:     $('landingPage'),
-  processingPage:  $('processingPage'),
-  chatPage:        $('chatPage'),
-  stepsContainer:  $('stepsContainer'),
-  footer:          $('footer'),
-  chatInput:       $('chatInput'),
-  sendBtn:         $('sendBtn'),
-  chatMessages:    $('chatMessages'),
-  repoNameDisplay: $('repoNameDisplay'),
-  warningBanner:   $('warningBanner'),
-  dismissWarning:  $('dismissWarning'),
-  statusDot:       $('statusDot'),
-  statusLabel:     $('statusLabel'),
+  repoInput:      $('repoInput'),
+  analyseBtn:     $('analyseBtn'),
+  landingPage:    $('landingPage'),
+  processingPage: $('processingPage'),
+  chatPage:       $('chatPage'),
+  stepsContainer: $('stepsContainer'),
+  procSubtitle:   $('procSubtitle'),
+  footer:         $('footer'),
+  chatInput:      $('chatInput'),
+  sendBtn:        $('sendBtn'),
+  chatMessages:   $('chatMessages'),
+  warningBanner:  $('warningBanner'),
+  dismissWarning: $('dismissWarning'),
+  statusDot:      $('statusDot'),
+  statusLabel:    $('statusLabel'),
 };
 
-let IS_BIG_REPO = false
+let IS_BIG_REPO   = false;
+let activeStepBox = null;
 
 // ─────────────────────────────────────────────
 // UTILITIES
 // ─────────────────────────────────────────────
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function setStatus(mode, label) {
-  els.statusDot.className = 'status-dot ' + mode;
+  els.statusDot.className   = 'status-dot ' + mode;
   els.statusLabel.textContent = label;
 }
 
+function showPage(pageEl) {
+  ['landingPage', 'processingPage', 'chatPage'].forEach((id) => {
+    $(id).classList.remove('active');
+  });
+  pageEl.classList.add('active');
+}
+
+function formatTime(d) {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─────────────────────────────────────────────
+// AUTO-GROW TEXTAREA
+// ─────────────────────────────────────────────
+els.chatInput.addEventListener('input', () => {
+  els.chatInput.style.height = 'auto';
+  els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 160) + 'px';
+});
+
 // ─────────────────────────────────────────────
 // COLLAPSE A COMPLETED STEP BOX
-// Locks the current height, fades sub-items out,
-// then adds .collapsed so CSS shrinks to the title row.
 // ─────────────────────────────────────────────
-function collapseBox(box, subsEl, isWarn) {
+function collapseBox(box, isWarn) {
   return new Promise((resolve) => {
-    // 1. Lock explicit height so the CSS transition has a start value
     box.style.height = box.offsetHeight + 'px';
 
-    // 2. Add the badge text BEFORE collapsing (it fades in via CSS delay)
     const badge = document.createElement('span');
     badge.className = 'step-collapsed-badge';
-    badge.textContent = isWarn ? '· Warning' : '· Completed';
+    badge.textContent = isWarn ? '· Warning' : '· Done';
     box.querySelector('.step-title').appendChild(badge);
 
-    // 3. Trigger collapse on next frame so the browser registers the locked height first
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         box.classList.add('collapsed');
       });
     });
 
-    // 4. Resolve after the height transition ends (~350ms)
     box.addEventListener('transitionend', function handler(e) {
       if (e.propertyName !== 'height') return;
       box.removeEventListener('transitionend', handler);
@@ -67,65 +79,51 @@ function collapseBox(box, subsEl, isWarn) {
   });
 }
 
-function showPage(pageEl) {
-  ['landingPage', 'processingPage', 'chatPage'].forEach((id) => {
-    const el = $(id);
-    el.classList.remove('active');
-  });
-  pageEl.classList.add('active');
-}
-
 // ─────────────────────────────────────────────
-// GLOBAL STATE FOR PROCESSING
-// ─────────────────────────────────────────────
-let activeStepBox = null;
-
-// ─────────────────────────────────────────────
-// PAGE 1 → 2: Kick off processing
+// LANDING → PROCESSING
 // ─────────────────────────────────────────────
 els.analyseBtn.addEventListener('click', startAnalysis);
-
 els.repoInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') startAnalysis();
+});
+
+// Welcome chip clicks
+document.querySelectorAll('.welcome-chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    els.chatInput.value = chip.textContent;
+    els.chatInput.focus();
+  });
 });
 
 function startAnalysis() {
   const repoUrl = els.repoInput.value.trim();
   if (!repoUrl) return;
 
-  // Extract owner/repo from URL for the UI display
-  const match = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
-  if (els.repoNameDisplay) {
-      els.repoNameDisplay.textContent = match ? match[1] : repoUrl;
-  }
-
-  setStatus('active', 'analysing');    /*small status on right corner */
-
+  setStatus('active', 'analysing');
   showPage(els.processingPage);
   els.stepsContainer.innerHTML = '';
   activeStepBox = null;
+  IS_BIG_REPO = false;
 
   connectToBackend(repoUrl);
 }
 
 // ─────────────────────────────────────────────
-// REAL BACKEND CONNECTION & UI STREAMING
+// BACKEND: INIT-REPO STREAM
 // ─────────────────────────────────────────────
 async function connectToBackend(repoUrl) {
   try {
     const response = await fetch('http://localhost:8000/init-repo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: repoUrl })
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url: repoUrl }),
     });
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
-    const reader = response.body.getReader();
+    const reader  = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer    = '';
 
     while (true) {
       const { value, done } = await reader.read();
@@ -133,77 +131,64 @@ async function connectToBackend(repoUrl) {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n\n');
-      buffer = lines.pop(); // keep incomplete event for next chunk
+      buffer = lines.pop();
 
       for (const event of lines) {
         if (!event.trim()) continue;
-        // Extract data: line
         const dataLine = event.split('\n')[0];
         if (!dataLine.startsWith('data: ')) continue;
-        const jsonString = dataLine.slice(6).trim();
         try {
-          const data = JSON.parse(jsonString);
+          const data = JSON.parse(dataLine.slice(6).trim());
           await processBackendEvent(data);
         } catch (e) {
-          console.error("JSON parse error:", e, jsonString);
+          console.error('Parse error:', e);
         }
       }
     }
   } catch (error) {
-    console.error("Fetch error:", error);
-    // Show error in UI and optionally go back
+    console.error('Fetch error:', error);
+
     if (activeStepBox) {
       await finishActiveBox(activeStepBox, 'ERROR');
     } else {
-      // If no box exists, create a temporary error box
       const errorBox = createNewStepBox(`Error: ${error.message}`);
       await finishActiveBox(errorBox, 'ERROR');
     }
-    // After a delay, go back to landing page (if that's your design)
-    setTimeout(() => showPage(els.landingPage), 2000);
+
+    await delay(1800);
+    showPage(els.landingPage);
+    setStatus('', 'idle');
   }
 }
-// ─────────────────────────────────────────────
-// DYNAMIC UI RENDERING
-// ─────────────────────────────────────────────
+
 async function processBackendEvent(data) {
   const { status, task } = data;
 
-  // 1. Handle complete termination (Go to Chat)
   if (status === 'FINISHED') {
-    if (activeStepBox) {
-      await finishActiveBox(activeStepBox, 'SUCCESS');
-    }
-    setTimeout(() => {
-      setStatus('chat', 'ready');
-      transitionToChat(); // Keep your existing transitionToChat function
-    }, 800);
+    if (activeStepBox) await finishActiveBox(activeStepBox, 'SUCCESS');
+    await delay(700);
+    setStatus('chat', 'ready');
+    transitionToChat();
     return;
   }
 
-  // 2. Handle a new 'START' task from the backend
   if (status === 'START') {
-    // Close any lingering active box just in case
-    if (activeStepBox) {
-      await finishActiveBox(activeStepBox, 'SUCCESS');
-    }
+    if (activeStepBox) await finishActiveBox(activeStepBox, 'SUCCESS');
     activeStepBox = createNewStepBox(task);
-  }
-  if (status === 'WARNING' && task.includes("Repo is large")){
-    IS_BIG_REPO = true;   
+    if (els.procSubtitle) els.procSubtitle.textContent = task;
   }
 
-  // 4. Handle a 'SUCCESS', 'WARNING', or 'ERROR' that closes the current task
-  else if (status === 'SUCCESS' || status === 'WARNING' || status === 'ERROR') {
+  if (status === 'WARNING' && task && task.includes('Repo is large')) {
+    IS_BIG_REPO = true;
+  }
+
+  if (status === 'SUCCESS' || status === 'WARNING' || status === 'ERROR') {
     if (activeStepBox) {
-      // Update the text to reflect the backend's completion message
       const titleText = activeStepBox.querySelector('.title-text');
       if (titleText) titleText.textContent = task;
-
       await finishActiveBox(activeStepBox, status);
-      activeStepBox = null; // Clear it so the next START creates a fresh box
+      activeStepBox = null;
     } else {
-      // Edge case: if backend sends SUCCESS without a START, just make a closed box
       const box = createNewStepBox(task);
       await finishActiveBox(box, status);
     }
@@ -213,68 +198,51 @@ async function processBackendEvent(data) {
 function createNewStepBox(message) {
   const box = document.createElement('div');
   box.className = 'step-box';
-  box.style.animationDelay = '0ms';
 
-  // Title row with spinning icon. Wrapped text in a span so we can update it later.
-  const titleEl = document.createElement('div');
-  titleEl.className = 'step-title';
-  titleEl.innerHTML = `<span class="step-icon spin-icon">◌</span> <span class="title-text">${message}</span>`;
-  box.appendChild(titleEl);
-
-  // Empty sub-items container (Required for your CSS to work properly during collapse)
-  const subsEl = document.createElement('div');
-  subsEl.className = 'sub-items';
-  box.appendChild(subsEl);
+  box.innerHTML = `
+    <div class="step-title">
+      <span class="step-icon spin-icon">◌</span>
+      <span class="title-text">${escapeHtml(message)}</span>
+    </div>
+    <div class="sub-items"></div>`;
 
   els.stepsContainer.appendChild(box);
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
   return box;
 }
 
 async function finishActiveBox(box, status) {
   const iconEl = box.querySelector('.step-icon');
-  const subsEl = box.querySelector('.sub-items');
-
-  // Remove the spinning animation
   iconEl.classList.remove('spin-icon');
 
-  let isWarn = false;
+  const isWarn = status === 'WARNING' || status === 'ERROR';
 
-  // Apply styles based on the FastAPI status
   if (status === 'WARNING') {
     box.classList.add('warn-yellow');
     iconEl.textContent = '⚠';
     iconEl.classList.add('warn');
-    isWarn = true;
   } else if (status === 'ERROR') {
-    box.classList.add('warn-yello');
-    iconEl.textContent = '✖';
-    iconEl.classList.add('warn');
-    isWarn = true;
+    box.classList.add('err-red');
+    iconEl.textContent = '✕';
+    iconEl.classList.add('err');
   } else {
-    // Default to Success
     box.classList.add('done-green');
     iconEl.textContent = '✓';
     iconEl.classList.add('green');
   }
 
-  // Brief pause so the color flash is visible, then trigger your existing CSS collapse logic
-  await new Promise(resolve => setTimeout(resolve, 300));
-  await collapseBox(box, subsEl, isWarn);
+  await delay(280);
+  await collapseBox(box, isWarn);
 }
 
-
 // ─────────────────────────────────────────────
-// PAGE 2 → 3: Chat transition
+// PROCESSING → CHAT
 // ─────────────────────────────────────────────
 function transitionToChat() {
-
-  if (IS_BIG_REPO) {
-    els.warningBanner.classList.remove('hidden');
-  }
+  if (IS_BIG_REPO) els.warningBanner.classList.remove('hidden');
 
   showPage(els.chatPage);
+  renderWelcome();
   els.footer.classList.remove('hidden');
   els.chatInput.focus();
 }
@@ -284,9 +252,38 @@ els.dismissWarning.addEventListener('click', () => {
 });
 
 // ─────────────────────────────────────────────
-// CHAT INTERACTION (Wired to FastAPI)
+// WELCOME STATE
 // ─────────────────────────────────────────────
+function renderWelcome() {
+  els.chatMessages.innerHTML = '';
 
+  const welcome = document.createElement('div');
+  welcome.className = 'chat-welcome';
+  welcome.innerHTML = `
+    <div class="welcome-icon">⎔</div>
+    <div class="welcome-title">Where do you want to start?</div>
+    <div class="welcome-sub">Ask anything about this repository</div>
+    <div class="welcome-chips">
+      <span class="welcome-chip">Give me an overview of this repo</span>
+      <span class="welcome-chip">What are the main dependencies?</span>
+      <span class="welcome-chip">How do I run this locally?</span>
+      <span class="welcome-chip">What design patterns are used?</span>
+    </div>`;
+
+  els.chatMessages.appendChild(welcome);
+
+  welcome.querySelectorAll('.welcome-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      els.chatInput.value = chip.dataset.q || chip.textContent;
+      els.chatInput.focus();
+      sendMessage();
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// CHAT: SEND
+// ─────────────────────────────────────────────
 els.sendBtn.addEventListener('click', sendMessage);
 els.chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -299,181 +296,221 @@ async function sendMessage() {
   const text = els.chatInput.value.trim();
   if (!text) return;
 
-  els.chatInput.value = ''; // clear input
-  
-  // 1. Show user message
-  appendMessage('user', text);
-  
-  // 2. Setup AI Response UI Elements
-  let thinkingEl = null;
-  let stepsContainer = null;
-  let lastStepEl = null;
-  let finalMessageBubble = null;
+  // Remove welcome block if present
+  const welcome = els.chatMessages.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  els.chatInput.value = '';
+  els.chatInput.style.height = 'auto';
+
+  // User bubble
+  appendUserMessage(text);
+
+  // Bot group container
+  const botGroup = document.createElement('div');
+  botGroup.className = 'msg-group bot';
+  els.chatMessages.appendChild(botGroup);
+
+  // Thinking UI (collapsible)
+  let thinkingWrap  = null;
+  let stepsInner    = null;
+  let lastStepEl    = null;
+  let stepCount     = 0;
+  let finalBubble   = null;
 
   try {
     const response = await fetch('http://localhost:8000/chat', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text })
+      body:    JSON.stringify({ message: text }),
     });
 
-    if (!response.ok) throw new Error("Backend connection failed");
+    if (!response.ok) throw new Error('Backend connection failed');
 
-    const reader = response.body.getReader();
+    const reader  = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
-
-    els.footer.classList.add('thinking-active');
+    let buffer    = '';
 
     while (true) {
       const { value, done } = await reader.read();
-      
+
       if (value) {
         buffer += decoder.decode(value, { stream: !done });
         const lines = buffer.split('\n\n');
-        buffer = lines.pop(); 
+        buffer = lines.pop();
 
         for (const event of lines) {
           if (!event.trim()) continue;
-          
           const dataLine = event.split('\n')[0];
           if (!dataLine.startsWith('data: ')) continue;
-          
-          const jsonString = dataLine.slice(6).trim();
+
           try {
-            const data = JSON.parse(jsonString);
-            
-            // Handle the incoming stream based on 'type'
+            const data = JSON.parse(dataLine.slice(6).trim());
+
             if (data.type === 'tool' || data.type === 'thinking') {
-              // Initialize thinking box if it doesn't exist yet
-              if (!thinkingEl) {
-                const ui = createThinkingUI();
-                thinkingEl = ui.wrap;
-                stepsContainer = ui.steps;
+              // Build thinking UI on first thought
+              if (!thinkingWrap) {
+                const ui = createThinkingUI(botGroup);
+                thinkingWrap = ui.wrap;
+                stepsInner   = ui.inner;
               }
-              // Add the new step
-              lastStepEl = addThinkingStep(stepsContainer, data.text, lastStepEl);
-            } 
-            
+              lastStepEl = addThinkingStep(stepsInner, data.text, lastStepEl);
+              stepCount++;
+              updateThinkingToggleLabel(thinkingWrap, stepCount, false);
+            }
+
             else if (data.type === 'message') {
-              // The AI is done thinking and is writing the final answer.
-              // Mark the last thinking step as "done"
-              if (lastStepEl) lastStepEl.classList.add('done');
-              
-              // Create the final message bubble if it doesn't exist yet
-              if (!finalMessageBubble) {
-                  finalMessageBubble = createBotMessageBubble();
+              // Mark last step done
+              if (lastStepEl) lastStepEl.classList.add('done-step');
+
+              // Finalise thinking toggle
+              if (thinkingWrap) {
+                updateThinkingToggleLabel(thinkingWrap, stepCount, true);
+                closeThinkingPanel(thinkingWrap);
               }
-              
-              // Because LangGraph's stream_mode="values" sends the WHOLE message 
-              // every time it updates, we overwrite the innerHTML.
-              finalMessageBubble.innerHTML = data.text;
-              finalMessageBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+              // Create or update the answer bubble
+              if (!finalBubble) {
+                finalBubble = createBotBubble(botGroup);
+              }
+              finalBubble.innerHTML = data.text;
+              finalBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
           } catch (e) {
-            console.error("JSON parse error:", e, jsonString);
+            console.error('Parse error:', e);
           }
         }
       }
+
       if (done) break;
     }
-    
-    els.footer.classList.remove('thinking-active');
+
+    // Add timestamp after response is complete
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.textContent = 'WHATREPO · ' + formatTime(new Date());
+    botGroup.appendChild(meta);
 
   } catch (error) {
-    els.footer.classList.remove('thinking-active');
-    appendMessage('bot', `<span style="color: var(--red);">Error: ${error.message}</span>`);
+    const errBubble = createBotBubble(botGroup);
+    errBubble.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(error.message)}</span>`;
   }
 }
 
 // ─────────────────────────────────────────────
-// UI HELPER FUNCTIONS
+// MESSAGE UI HELPERS
 // ─────────────────────────────────────────────
-
-function appendMessage(role, text) {
-  // Remove welcome block on first real message
-  const welcome = els.chatMessages.querySelector('.chat-welcome');
-  if (welcome) welcome.remove();
-
-  const wrap = document.createElement('div');
-  wrap.className = `msg-wrap ${role}`;
-
-  const bubble = document.createElement('div');
-  bubble.className = `msg-bubble ${role}`;
-  bubble.textContent = text;
-
-  const meta = document.createElement('div');
-  meta.className = 'msg-meta';
-  const now = new Date();
-  meta.textContent = role === 'user' ? 'You · ' + formatTime(now) : 'WHATREPO · ' + formatTime(now);
-
-  wrap.appendChild(bubble);
-  wrap.appendChild(meta);
-  els.chatMessages.appendChild(wrap);
-  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+function appendUserMessage(text) {
+  const group = document.createElement('div');
+  group.className = 'msg-group user';
+  group.innerHTML = `
+    <div class="msg-sender">You</div>
+    <div class="msg-bubble user">${escapeHtml(text)}</div>
+    <div class="msg-meta">${formatTime(new Date())}</div>`;
+  els.chatMessages.appendChild(group);
+  group.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
-function createBotMessageBubble() {
-  const wrap = document.createElement('div');
-  wrap.className = `msg-wrap bot`;
-
+function createBotBubble(container) {
   const bubble = document.createElement('div');
-  bubble.className = `msg-bubble bot`;
-  
-  const meta = document.createElement('div');
-  meta.className = 'msg-meta';
-  meta.textContent = 'WHATREPO · ' + formatTime(new Date());
-
-  wrap.appendChild(bubble);
-  wrap.appendChild(meta);
-  els.chatMessages.appendChild(wrap);
-  
+  bubble.className = 'msg-bubble bot';
+  container.appendChild(bubble);
   return bubble;
 }
 
 // ─────────────────────────────────────────────
-// THINKING UI LOGIC (Reuses your friend's CSS)
+// THINKING UI — Collapsible (Gemini-style)
 // ─────────────────────────────────────────────
-
-function createThinkingUI() {
+function createThinkingUI(container) {
   const wrap = document.createElement('div');
-  wrap.className = 'msg-wrap bot';
+  wrap.className = 'thinking-wrap';
+
   wrap.innerHTML = `
-    <div class="thinking-bubble">
-      <div class="thinking-steps"></div>
+    <button class="thinking-toggle active open" aria-expanded="true">
+      <span class="thinking-spinner">
+        <svg width="12" height="12" viewBox="0 0 50 50">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="var(--accent)" stroke-width="5"
+            stroke-dasharray="80 45" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="thinking-label">Thinking…</span>
+      <span class="thinking-chevron">▾</span>
+    </button>
+    <div class="thinking-steps-panel open">
+      <div class="thinking-steps-inner"></div>
     </div>`;
-  els.chatMessages.appendChild(wrap);
-  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  
+
+  container.appendChild(wrap);
+
+  // Toggle click
+  const toggle = wrap.querySelector('.thinking-toggle');
+  const panel  = wrap.querySelector('.thinking-steps-panel');
+
+  toggle.addEventListener('click', () => {
+    const isOpen = panel.classList.contains('open');
+    panel.classList.toggle('open', !isOpen);
+    toggle.classList.toggle('open', !isOpen);
+    toggle.setAttribute('aria-expanded', String(!isOpen));
+  });
+
   return {
-    wrap: wrap,
-    steps: wrap.querySelector('.thinking-steps')
+    wrap,
+    toggle,
+    panel,
+    inner: wrap.querySelector('.thinking-steps-inner'),
   };
 }
 
-function addThinkingStep(container, text, previousStepEl) {
-    // 1. Mark the previous step as "done" (turns blue, stops pulsing)
-    if (previousStepEl) {
-      previousStepEl.classList.add('done');
-    }
+function addThinkingStep(inner, text, previousStepEl) {
+  // Mark previous as done
+  if (previousStepEl) {
+    previousStepEl.classList.remove('current');
+    previousStepEl.classList.add('done-step');
+  }
 
-    // 2. Create the new step
-    const stepEl = document.createElement('div');
-    stepEl.className = 'thinking-step';
-    stepEl.innerHTML = `<span class="thinking-dot"></span><span>${text}</span>`;
-    
-    container.appendChild(stepEl);
+  const step = document.createElement('div');
+  step.className = 'thinking-step current';
+  step.innerHTML = `<span class="thinking-step-dot"></span><span>${escapeHtml(text)}</span>`;
+  inner.appendChild(step);
 
-    // 3. Trigger the CSS fade-in animation slightly after appending
-    setTimeout(() => {
-      stepEl.classList.add('visible');
-      stepEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 10);
+  // Scroll the panel
+  inner.scrollTop = inner.scrollHeight;
 
-    return stepEl; // Return this so we can mark it "done" on the next loop
+  return step;
 }
 
-function formatTime(d) {
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function updateThinkingToggleLabel(wrap, count, isDone) {
+  const label   = wrap.querySelector('.thinking-label');
+  const spinner = wrap.querySelector('.thinking-spinner');
+  const toggle  = wrap.querySelector('.thinking-toggle');
+
+  if (isDone) {
+    label.textContent = `Thought for ${count} step${count !== 1 ? 's' : ''}`;
+    spinner.classList.add('done');
+    spinner.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="var(--green)"/></svg>`;
+    toggle.classList.remove('active');
+  } else {
+    label.textContent = `Thinking… (${count} step${count !== 1 ? 's' : ''})`;
+  }
+}
+
+function closeThinkingPanel(wrap) {
+  const panel  = wrap.querySelector('.thinking-steps-panel');
+  const toggle = wrap.querySelector('.thinking-toggle');
+  // Auto-collapse once done so the focus is on the answer
+  panel.classList.remove('open');
+  toggle.classList.remove('open');
+  toggle.setAttribute('aria-expanded', 'false');
+}
+
+// ─────────────────────────────────────────────
+// ESCAPE
+// ─────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
