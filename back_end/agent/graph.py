@@ -57,7 +57,7 @@ def initialize_agent(is_vector_db_created: bool, tools: list):
     llm_with_tools = llm.bind_tools(tools)
 
     message_trimmer = trim_messages(
-        max_tokens=50000, 
+        max_tokens=200000, 
         strategy="last",
         token_counter=_tiktoken_counter, # We Use the Gemini model's specific token counter but it will make http request which will take too long so just just tiktoken wich will be good enough
         include_system=True, # NEVER delete the system prompt/repo map

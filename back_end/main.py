@@ -155,6 +155,7 @@ async def chat_stream(request: ChatRequest):
         # Stream the response from LangGraph
         for event in GLOBAL_APP.stream({"messages": GLOBAL_CHAT_HISTORY}, stream_mode="values", config=config):
             message = event["messages"][-1]
+            message.pretty_print()
             
             # 1. Check if the AI is calling a tool
             if message.type == "ai" and getattr(message, "tool_calls", None):

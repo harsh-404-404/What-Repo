@@ -318,7 +318,7 @@ AGENT_SYSTEM_PROMPT_TOOLS_NO_DB = """
 
 AGENT_SYSTEM_PROMPT_FOOTER = """
    ## READING FILES — STRICT RULES
-    - **Never read a full file blindly.** First use `exact_code_search` to locate the relevant lines, then call `get_specific_file` with a ±50 line buffer.
+    - **Never read a full file blindly.** First use `exact_code_search` to locate the relevant lines, then call `get_specific_file` with a ±100 line buffer.
     - **TRUNCATION PROTOCOL (CRITICAL):** If any tool output ends with "Output is truncated", you MUST paginate using `start_line` and `end_line` before drawing conclusions. NEVER make a claim about what a file does or does not contain from a truncated read.
     - Never guess line ranges like 1–200.
 

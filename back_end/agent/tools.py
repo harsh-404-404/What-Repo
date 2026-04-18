@@ -4,7 +4,6 @@ import itertools
 from pathlib import Path
 from langchain.tools import tool
 from langchain_community.retrievers import BM25Retriever
-from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document
 from langchain_core.tools import BaseTool
 from config import EXCLUDE_PATTERNS
@@ -218,8 +217,8 @@ def get_code_search_tools(
                     return (f"Error: The file '{file_path}' is too large ({file_size} bytes) to load entirely. "
                             f"Please use this tool again and provide `start_line` and `end_line` parameters to read specific sections or consider other tools such as exact_code_serch.")
 
-                docs = TextLoader(absolute_file_path, autodetect_encoding=True).load()
-                content = docs[0].page_content
+            with open(absolute_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
                 
                 return f"--- File_Source: {file_path} ---\n{content}"
                 
