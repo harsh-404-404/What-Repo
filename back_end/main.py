@@ -159,7 +159,7 @@ async def chat_stream(request: ChatRequest):
             # 1. Check if the AI is calling a tool
             if message.type == "ai" and getattr(message, "tool_calls", None):
                 for tool in message.tool_calls:
-                    yield format_chat_chunk("tool", f"Using tool: {tool['name']}...")
+                    yield format_chat_chunk("tool", f"Browsing Codebase...")
                     await asyncio.sleep(0.01)
 
             # 2. Process the actual AI content

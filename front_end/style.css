@@ -474,6 +474,15 @@ input {
   margin: 0 auto;
   padding: 30px 24px 140px;
 }
+.chat-inner {
+  height: calc(100vh - var(--header-h) - 80px); /* adjust footer height */
+  overflow: hidden;
+}
+
+.chat-messages {
+  height: 100%;
+  overflow-y: auto;
+}
 
 .chat-messages {
   display: flex;
