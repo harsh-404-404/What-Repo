@@ -159,7 +159,7 @@ async def chat_stream(request: ChatRequest):
             # 1. Check if the AI is calling a tool
             if message.type == "ai" and getattr(message, "tool_calls", None):
                 for tool in message.tool_calls:
-                    yield format_chat_chunk("tool", f"Browsing Codebase...")
+                    yield format_chat_chunk("tool", f"Browsing Codebase..")
                     await asyncio.sleep(0.01)
 
             # 2. Process the actual AI content
@@ -169,13 +169,13 @@ async def chat_stream(request: ChatRequest):
                 if isinstance(message.content, list):
                     for block in message.content:
                         if isinstance(block, dict) and "thinking" in block:
-                            clean_think = block["thinking"].replace('\n', '<br>')
+                            clean_think = block["thinking"]
                             yield format_chat_chunk("thinking", clean_think)
                             await asyncio.sleep(0.01)
                             
                 # SCENARIO B: Final Output (Content is a plain string)
                 elif isinstance(message.content, str) and message.content.strip():
-                    clean_text = message.content.replace('\n', '<br>')
+                    clean_text = message.content
                     yield format_chat_chunk("message", clean_text)
                     await asyncio.sleep(0.01)
                     final_ai_message = message # Save this to append to history later

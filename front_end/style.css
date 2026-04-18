@@ -704,7 +704,7 @@ input, textarea {
 }
 
 .msg-bubble {
-  max-width: min(680px, 88%);
+  /* max-width: min(680px, 88%); */
   padding: 13px 18px;
   border-radius: var(--radius);
   font-size: 0.87rem;
@@ -764,7 +764,7 @@ input, textarea {
   gap: 0;
   align-self: flex-start;
   width: 100%;
-  max-width: min(680px, 88%);
+  /* max-width: min(680px, 88%); */
   animation: msgIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
